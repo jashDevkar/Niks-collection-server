@@ -28,6 +28,11 @@ app.use(cors({
 // })();
 
 
+app.get("/",(req,res)=>{
+  res.send("Niks-Collection server is spinning up");
+})
+
+
 
 app.use(express.json());
 app.use(authRoute)
