@@ -9,23 +9,17 @@ dotenv.config();
 
 const app = express();
 
+const port = process.env.PORT ?? 8000;
+
+
 app.use(cors({
-  origin: "*", // frontend origin
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true, 
 }));
 
 
 
-// (async () => {
-//     try {
-//         const connection = await db.getConnection();
-//     console.log("✅ Connected to MySQL Workbench DB");
-//     connection.release();
-// } catch (err) {
-//     console.error("❌ DB Connection Failed:", err.message);
-//   }
-// })();
 
 
 app.get("/",(req,res)=>{
@@ -40,6 +34,6 @@ app.use(authRoute)
 
 
 
-app.listen(8000, () => {
+app.listen(port, () => {
   console.log("🚀 Server is listening on port 8000");
 });
