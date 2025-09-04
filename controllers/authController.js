@@ -110,7 +110,7 @@ export async function signupController(req, res) {
       .single();
 
     if (insertError) {
-      console.error("Supabase insert error:", insertError);
+      
       return res.status(500).json({ message: "Failed to create user" });
     }
 
