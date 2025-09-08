@@ -1,19 +1,20 @@
 import express from 'express';
-import { loginController, signupController, verifyUser } from '../controllers/authController.js';
+import { loginController, signupController, verifyOtpController, verifyUser } from '../controllers/authController.js';
 
 
 
-const authRoute = express.Router();
+const authRouter = express.Router();
 
 
-authRoute.post("/login",loginController);
-authRoute.post("/signup",signupController);
+authRouter.post("/login",loginController);
+authRouter.post("/signup",signupController);
+authRouter.post("/verify-otp", verifyOtpController);
 
 
-authRoute.get("/verify-user",verifyUser);
+authRouter.get("/verify-user",verifyUser);
 
 
 
 
 
-export default authRoute;
+export default authRouter;

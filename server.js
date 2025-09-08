@@ -1,6 +1,6 @@
 import express from "express";
 import db from "./db.js";
-import authRoute from "./routes/auth.route.js";
+import authRouter from "./routes/auth.route.js";
 import dotenv from 'dotenv';
 import cors from "cors";
 
@@ -22,14 +22,21 @@ app.use(cors({
 
 
 
-app.get("/",(req,res)=>{
-  res.send("Niks-Collection server is spinning up");
-})
-
 
 
 app.use(express.json());
-app.use(authRoute)
+app.use(authRouter)
+
+
+
+
+
+app.get("/",(req,res)=>{
+
+
+  res.send("Niks-Collection server is spinning up");
+})
+
 
 
 
