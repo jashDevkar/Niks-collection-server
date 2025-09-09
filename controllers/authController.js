@@ -17,6 +17,7 @@ export async function verifyUser(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded);
     return res.status(200).json({ message: "user logged in", user: decoded });
   } catch (error) {
 
@@ -42,20 +43,18 @@ export async function loginController(req, res) {
       .from("users")
       .select("*")
       .eq("email", email)
-      .maybeSingle();
+      .single();
 
     if (selectError) {
       console.error("Supabase select error:", selectError);
       return res.status(500).json({ message: "Database error" });
     }
 
+
+
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
-    }
-
-
-    if (!user.password) {
-      return res.status(400).json({ message: "Please sign in with Google" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -63,16 +62,32 @@ export async function loginController(req, res) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+
+
+    delete user.password;
+    delete user.updated_at;
+    delete user.created_at;
+    delete user.role;
+
+
+    if(user.email_verified == false){
+      
+      delete user.email_verified;
+
+      return res.status(300).json({message:"Verify email",user:user})
+    }
+
+
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { user:user },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
-    );
+    );  
 
     return res.status(200).json({
       message: "Login successful",
       token,
-      user: user.email,
+      user: user,
     });
   } catch (error) {
 
@@ -85,13 +100,60 @@ export async function loginController(req, res) {
 
 
 
+
+
+export async function getTokenAndUserData(req,res) {
+
+  try{
+
+    const {userId} = req.body;
+
+
+    if(!userId){
+      return res.status(404).json({message:"User not found"})
+    }
+
+    const {data:userData,error} = await db.from("users").select("id,name,email").eq("id",userId).single();
+
+    if(error){
+      console.log(error);
+      return res.status(500).json({message:"Something went wrong from our side"});
+    }
+
+
+
+    const token = jwt.sign(
+      {user:userData},
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );  
+
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: userData,
+    });
+
+
+
+  }catch(error){
+    console.log(error);
+    return res.status(500).json({message:"Something went wrong"});
+  }
+  
+}
+
+
+
+
+
 export async function signupController(req, res) {
   try {
     const { name, email, password } = req.body;
 
 
-    console.log(name,email,password);
-    
+
+
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -100,7 +162,7 @@ export async function signupController(req, res) {
       .from("users")
       .select("id")
       .eq("email", email)
-      .maybeSingle();
+      .single();
 
     if (existingUser) {
       return res.status(409).json({ message: "User already exists" });
@@ -131,6 +193,8 @@ export async function signupController(req, res) {
       },
     ]);
 
+
+
     // Send OTP email
     await sendVerificationEmail(email, otp);
 
@@ -152,11 +216,14 @@ export async function verifyOtpController(req, res) {
   try {
     const { userId, otp } = req.body;
 
-    
+
 
     if (!userId || !otp) {
       return res.status(400).json({ message: "User ID and OTP are required" });
     }
+
+
+    const {data:userData,error} = await db.from("users").select("id,name,email").eq("id",userId).single();
 
     const { data: otpEntry } = await db
       .from("user_otps")
@@ -188,7 +255,7 @@ export async function verifyOtpController(req, res) {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: userId },
+      { user:userData },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -199,3 +266,76 @@ export async function verifyOtpController(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+
+
+
+
+export async function resendOtp(req, res) {
+
+  try {
+
+
+    const { userId } = req.body;
+
+
+    if (!userId) {
+      return res.status(400).json({ message: "User id is required" });
+    }
+
+
+    const { data: userData, error: userError } = await db.from("users").select("*").eq("id", userId).maybeSingle();
+
+
+
+
+
+    const { data, error } = await db.from("user_otps").select("id").eq("user_id", userId).single();
+
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+
+
+    if (!data) {
+      return res.status(404).json({ message: "OTP record not found" });
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+
+
+
+    const { error: updateError } = await db.from("user_otps").update({ otp_code: otp, otp_expires_at: expiresAt, used: false }).eq("id", data.id);
+    
+    if (updateError) {
+      console.error("Update OTP error:", updateError);
+      return res.status(500).json({ message: "Failed to update OTP" });
+    }
+
+    await sendVerificationEmail(userData.email, otp);
+
+    res.status(200).json({ message: "Otp has been sended on the email" });
+
+
+
+
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+
+
+
+}
+
+
+
+
+
+
